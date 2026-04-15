@@ -392,6 +392,10 @@
         </div>
         <span id="musicStatus" style="color: rgba(255, 180, 100, 0.6); font-size: 12px; margin-left: 10px;"></span>
     </div>
+    
+    <audio id="bgMusic" loop>
+        <source src="https://downsc.chinaz.net/Files/DownLoad/sound1/201801/9620.wav" type="audio/wav">
+    </audio>
 
     <script>
         const canvas = document.getElementById('starCanvas');
@@ -403,22 +407,11 @@
         const pauseBtn = document.getElementById('pauseBtn');
         const volumeSlider = document.getElementById('volumeSlider');
         const musicStatus = document.getElementById('musicStatus');
+        const bgMusic = document.getElementById('bgMusic');
         
         let particles = [];
         let lanterns = [];
         let animationId;
-        
-        let audioContext = null;
-        let audioSource = null;
-        let gainNode = null;
-        let isAudioPlaying = false;
-        let audioBuffer = null;
-        let currentAudioTime = 0;
-        let startTime = 0;
-        
-        const audioUrls = [
-            'https://downsc.chinaz.net/Files/DownLoad/sound1/201801/9620.wav'
-        ];
         
         const mockWishes = [
             "愿家人平安健康",
@@ -685,97 +678,6 @@
             }, 5000);
         }
         
-        async function initAudio() {
-            if (!audioContext) {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                gainNode = audioContext.createGain();
-                gainNode.connect(audioContext.destination);
-                gainNode.gain.value = volumeSlider.value / 100;
-            }
-            
-            if (!audioBuffer) {
-                musicStatus.textContent = '加载音频中...';
-                for (const url of audioUrls) {
-                    try {
-                        const response = await fetch(url, {
-                            mode: 'cors',
-                            credentials: 'omit'
-                        });
-                        if (response.ok) {
-                            const arrayBuffer = await response.arrayBuffer();
-                            audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-                            musicStatus.textContent = '';
-                            return true;
-                        }
-                    } catch (e) {
-                        console.log('尝试音频URL失败:', url, e);
-                        continue;
-                    }
-                }
-                
-                musicStatus.textContent = '使用内置音频';
-                return false;
-            }
-            return true;
-        }
-        
-        function playAudio() {
-            if (!audioContext) {
-                initAudio().then(() => {
-                    startPlayback();
-                });
-            } else {
-                if (audioContext.state === 'suspended') {
-                    audioContext.resume();
-                }
-                startPlayback();
-            }
-        }
-        
-        function startPlayback() {
-            if (audioBuffer) {
-                if (audioSource) {
-                    try {
-                        audioSource.stop();
-                    } catch (e) {}
-                }
-                
-                audioSource = audioContext.createBufferSource();
-                audioSource.buffer = audioBuffer;
-                audioSource.connect(gainNode);
-                audioSource.loop = true;
-                
-                startTime = audioContext.currentTime - currentAudioTime;
-                audioSource.start(0, currentAudioTime);
-                isAudioPlaying = true;
-                
-                playBtn.style.display = 'none';
-                pauseBtn.style.display = 'flex';
-            } else {
-                musicStatus.textContent = '音频加载中...';
-                initAudio().then((success) => {
-                    if (success) {
-                        startPlayback();
-                    } else {
-                        musicStatus.textContent = '音频不可用';
-                    }
-                });
-            }
-        }
-        
-        function pauseAudio() {
-            if (audioSource && isAudioPlaying) {
-                currentAudioTime = audioContext.currentTime - startTime;
-                try {
-                    audioSource.stop();
-                } catch (e) {}
-                isAudioPlaying = false;
-                
-                pauseBtn.style.display = 'none';
-                playBtn.style.display = 'flex';
-            }
-        }
-        
         sendBtn.addEventListener('click', () => {
             const wish = wishInput.value.trim();
             if (wish) {
@@ -794,19 +696,36 @@
             }
         });
         
+        bgMusic.volume = volumeSlider.value / 100;
+        
+        bgMusic.addEventListener('canplay', () => {
+            musicStatus.textContent = '';
+        });
+        
+        bgMusic.addEventListener('error', (e) => {
+            console.log('音频加载错误:', e);
+            musicStatus.textContent = '音频加载中...';
+        });
+        
         playBtn.addEventListener('click', () => {
-            playAudio();
+            bgMusic.play().then(() => {
+                playBtn.style.display = 'none';
+                pauseBtn.style.display = 'flex';
+                musicStatus.textContent = '';
+            }).catch(err => {
+                console.log('音频播放失败:', err);
+                musicStatus.textContent = '点击页面后再试';
+            });
         });
         
         pauseBtn.addEventListener('click', () => {
-            pauseAudio();
+            bgMusic.pause();
+            pauseBtn.style.display = 'none';
+            playBtn.style.display = 'flex';
         });
         
         volumeSlider.addEventListener('input', (e) => {
-            const volume = e.target.value / 100;
-            if (gainNode) {
-                gainNode.gain.value = volume;
-            }
+            bgMusic.volume = e.target.value / 100;
         });
         
         window.addEventListener('resize', () => {

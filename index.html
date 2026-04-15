@@ -374,12 +374,12 @@
     </div>
     
     <div id="musicPlayer">
-        <button class="music-btn" id="playBtn">
+        <button class="music-btn" id="playBtn" title="播放">
             <svg viewBox="0 0 24 24">
                 <path d="M8 5v14l11-7z"/>
             </svg>
         </button>
-        <button class="music-btn" id="pauseBtn" style="display: none;">
+        <button class="music-btn" id="pauseBtn" title="暂停" style="display: none;">
             <svg viewBox="0 0 24 24">
                 <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
             </svg>
@@ -390,11 +390,8 @@
             </svg>
             <input type="range" id="volumeSlider" min="0" max="100" value="50">
         </div>
+        <span id="musicStatus" style="color: rgba(255, 180, 100, 0.6); font-size: 12px; margin-left: 10px;"></span>
     </div>
-    
-    <audio id="bgMusic" loop crossorigin="anonymous">
-        <source src="https://www.soundjay.com/nature/sounds/rain-01.mp3" type="audio/mpeg">
-    </audio>
 
     <script>
         const canvas = document.getElementById('starCanvas');
@@ -405,11 +402,25 @@
         const playBtn = document.getElementById('playBtn');
         const pauseBtn = document.getElementById('pauseBtn');
         const volumeSlider = document.getElementById('volumeSlider');
-        const bgMusic = document.getElementById('bgMusic');
+        const musicStatus = document.getElementById('musicStatus');
         
         let particles = [];
         let lanterns = [];
         let animationId;
+        
+        let audioContext = null;
+        let audioSource = null;
+        let gainNode = null;
+        let isAudioPlaying = false;
+        let audioBuffer = null;
+        let currentAudioTime = 0;
+        let startTime = 0;
+        
+        const audioUrls = [
+            'https://www.soundjay.com/nature/sounds/rain-01.mp3',
+            'https://www.soundjay.com/nature/sounds/wind-chime-01.mp3',
+            'https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3'
+        ];
         
         const mockWishes = [
             "愿家人平安健康",
@@ -574,13 +585,18 @@
                 element: lantern,
                 x: startX,
                 y: startY,
-                vx: (Math.random() - 0.5) * 0.3,
-                vy: -0.8 - Math.random() * 0.4,
+                baseX: startX,
+                vx: 0,
+                vy: -0.6 - Math.random() * 0.3,
                 scale: 1,
                 opacity: 1,
                 wobblePhase: Math.random() * Math.PI * 2,
-                wobbleSpeed: 0.02 + Math.random() * 0.02,
-                wobbleAmount: 0.5 + Math.random() * 0.5,
+                wobblePhase2: Math.random() * Math.PI * 2,
+                wobbleSpeed: 0.015 + Math.random() * 0.01,
+                wobbleSpeed2: 0.008 + Math.random() * 0.005,
+                wobbleAmount: 15 + Math.random() * 20,
+                wobbleAmount2: 8 + Math.random() * 12,
+                driftDirection: (Math.random() - 0.5) * 0.02,
                 isUserWish: isUserWish,
                 createdAt: Date.now()
             };
@@ -594,25 +610,37 @@
                 const lantern = lanterns[i];
                 
                 lantern.wobblePhase += lantern.wobbleSpeed;
-                const wobbleOffset = Math.sin(lantern.wobblePhase) * lantern.wobbleAmount;
+                lantern.wobblePhase2 += lantern.wobbleSpeed2;
                 
-                lantern.x += lantern.vx + wobbleOffset * 0.1;
+                const wobble1 = Math.sin(lantern.wobblePhase) * lantern.wobbleAmount;
+                const wobble2 = Math.sin(lantern.wobblePhase2) * lantern.wobbleAmount2;
+                const totalWobble = wobble1 + wobble2;
+                
+                lantern.baseX += lantern.driftDirection;
+                lantern.x = lantern.baseX + totalWobble;
                 lantern.y += lantern.vy;
                 
                 const progress = 1 - (lantern.y / (window.innerHeight + 200));
                 lantern.scale = Math.max(0.3, 1 - progress * 0.7);
                 lantern.opacity = Math.max(0, 1 - progress * 0.8);
                 
-                if (lantern.x < 50) {
-                    lantern.x = 50;
-                    lantern.vx = Math.abs(lantern.vx);
+                const minX = 30;
+                const maxX = window.innerWidth - 80;
+                
+                if (lantern.baseX < minX) {
+                    lantern.baseX = minX;
+                    lantern.driftDirection = Math.abs(lantern.driftDirection);
                 }
-                if (lantern.x > window.innerWidth - 100) {
-                    lantern.x = window.innerWidth - 100;
-                    lantern.vx = -Math.abs(lantern.vx);
+                if (lantern.baseX > maxX) {
+                    lantern.baseX = maxX;
+                    lantern.driftDirection = -Math.abs(lantern.driftDirection);
                 }
                 
-                lantern.element.style.transform = `translate(${lantern.x - parseFloat(lantern.element.style.left)}px, 0) scale(${lantern.scale})`;
+                lantern.x = Math.max(minX, Math.min(maxX, lantern.x));
+                
+                const rotation = totalWobble * 0.15;
+                
+                lantern.element.style.transform = `translate(${lantern.x - parseFloat(lantern.element.style.left)}px, 0) scale(${lantern.scale}) rotate(${rotation}deg)`;
                 lantern.element.style.opacity = lantern.opacity;
                 lantern.element.style.left = lantern.x + 'px';
                 lantern.element.style.top = lantern.y + 'px';
@@ -661,6 +689,97 @@
             }, 5000);
         }
         
+        async function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                gainNode = audioContext.createGain();
+                gainNode.connect(audioContext.destination);
+                gainNode.gain.value = volumeSlider.value / 100;
+            }
+            
+            if (!audioBuffer) {
+                musicStatus.textContent = '加载音频中...';
+                for (const url of audioUrls) {
+                    try {
+                        const response = await fetch(url, {
+                            mode: 'cors',
+                            credentials: 'omit'
+                        });
+                        if (response.ok) {
+                            const arrayBuffer = await response.arrayBuffer();
+                            audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                            musicStatus.textContent = '';
+                            return true;
+                        }
+                    } catch (e) {
+                        console.log('尝试音频URL失败:', url, e);
+                        continue;
+                    }
+                }
+                
+                musicStatus.textContent = '使用内置音频';
+                return false;
+            }
+            return true;
+        }
+        
+        function playAudio() {
+            if (!audioContext) {
+                initAudio().then(() => {
+                    startPlayback();
+                });
+            } else {
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+                startPlayback();
+            }
+        }
+        
+        function startPlayback() {
+            if (audioBuffer) {
+                if (audioSource) {
+                    try {
+                        audioSource.stop();
+                    } catch (e) {}
+                }
+                
+                audioSource = audioContext.createBufferSource();
+                audioSource.buffer = audioBuffer;
+                audioSource.connect(gainNode);
+                audioSource.loop = true;
+                
+                startTime = audioContext.currentTime - currentAudioTime;
+                audioSource.start(0, currentAudioTime);
+                isAudioPlaying = true;
+                
+                playBtn.style.display = 'none';
+                pauseBtn.style.display = 'flex';
+            } else {
+                musicStatus.textContent = '音频加载中...';
+                initAudio().then((success) => {
+                    if (success) {
+                        startPlayback();
+                    } else {
+                        musicStatus.textContent = '音频不可用';
+                    }
+                });
+            }
+        }
+        
+        function pauseAudio() {
+            if (audioSource && isAudioPlaying) {
+                currentAudioTime = audioContext.currentTime - startTime;
+                try {
+                    audioSource.stop();
+                } catch (e) {}
+                isAudioPlaying = false;
+                
+                pauseBtn.style.display = 'none';
+                playBtn.style.display = 'flex';
+            }
+        }
+        
         sendBtn.addEventListener('click', () => {
             const wish = wishInput.value.trim();
             if (wish) {
@@ -680,25 +799,19 @@
         });
         
         playBtn.addEventListener('click', () => {
-            bgMusic.play().then(() => {
-                playBtn.style.display = 'none';
-                pauseBtn.style.display = 'flex';
-            }).catch(err => {
-                console.log('音频播放需要用户交互:', err);
-            });
+            playAudio();
         });
         
         pauseBtn.addEventListener('click', () => {
-            bgMusic.pause();
-            pauseBtn.style.display = 'none';
-            playBtn.style.display = 'flex';
+            pauseAudio();
         });
         
         volumeSlider.addEventListener('input', (e) => {
-            bgMusic.volume = e.target.value / 100;
+            const volume = e.target.value / 100;
+            if (gainNode) {
+                gainNode.gain.value = volume;
+            }
         });
-        
-        bgMusic.volume = 0.5;
         
         window.addEventListener('resize', () => {
             resizeCanvas();

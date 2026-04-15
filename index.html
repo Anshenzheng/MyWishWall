@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>沉浸式中式许愿墙</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=ZCOOL+KuaiLe&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            overflow: hidden;
+            font-family: 'Ma Shan Zheng', 'ZCOOL KuaiLe', cursive, sans-serif;
+            background: linear-gradient(180deg, #0a0e1a 0%, #1a1f35 50%, #252a42 100%);
+            min-height: 100vh;
+        }
+        
+        #starCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        
+        #lanternsContainer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            pointer-events: none;
+        }
+        
+        .lantern {
+            position: absolute;
+            pointer-events: none;
+            transform-origin: center bottom;
+            will-change: transform, opacity;
+            contain: layout style paint;
+        }
+        
+        .lantern-body {
+            position: relative;
+            width: 60px;
+            height: 80px;
+            margin: 0 auto;
+        }
+        
+        .lantern-glow {
+            position: absolute;
+            top: -20px;
+            left: -30px;
+            width: 120px;
+            height: 140px;
+            background: radial-gradient(ellipse at center, 
+                rgba(255, 180, 100, 0.4) 0%, 
+                rgba(255, 150, 80, 0.2) 30%, 
+                rgba(255, 120, 60, 0.1) 50%, 
+                transparent 70%);
+            border-radius: 50%;
+            animation: glowPulse 3s ease-in-out infinite;
+        }
+        
+        @keyframes glowPulse {
+            0%, 100% { opacity: 0.8; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.05); }
+        }
+        
+        .lantern-paper {
+            position: absolute;
+            top: 10px;
+            left: 5px;
+            width: 50px;
+            height: 60px;
+            background: linear-gradient(180deg, 
+                #ffd4a3 0%, 
+                #ffb87a 20%, 
+                #ff9f5a 50%, 
+                #ff8c42 80%, 
+                #ff7a30 100%);
+            border-radius: 25px 25px 15px 15px;
+            box-shadow: 
+                inset 0 0 20px rgba(255, 200, 150, 0.5),
+                0 0 30px rgba(255, 150, 80, 0.6),
+                0 0 60px rgba(255, 120, 60, 0.3);
+        }
+        
+        .lantern-paper::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 5px;
+            width: 40px;
+            height: 100%;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                rgba(255, 220, 180, 0.3) 50%, 
+                transparent 100%);
+            border-radius: 25px;
+        }
+        
+        .lantern-rim {
+            position: absolute;
+            width: 54px;
+            height: 8px;
+            background: linear-gradient(180deg, #8b4513 0%, #654321 100%);
+            border-radius: 4px;
+            left: 3px;
+        }
+        
+        .lantern-rim.top {
+            top: 5px;
+        }
+        
+        .lantern-rim.bottom {
+            bottom: 5px;
+        }
+        
+        .lantern-tassel {
+            position: absolute;
+            bottom: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 2px;
+            height: 20px;
+            background: linear-gradient(180deg, #8b0000 0%, #dc143c 100%);
+        }
+        
+        .lantern-tassel::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 8px;
+            height: 12px;
+            background: linear-gradient(180deg, #dc143c 0%, #8b0000 100%);
+            border-radius: 0 0 4px 4px;
+        }
+        
+        .wish-plate {
+            position: relative;
+            width: 50px;
+            min-height: 60px;
+            margin: 5px auto 0;
+            background: linear-gradient(180deg, 
+                #d4a574 0%, 
+                #c4956a 30%, 
+                #b88960 70%, 
+                #a87950 100%);
+            border-radius: 5px;
+            box-shadow: 
+                0 2px 8px rgba(0, 0, 0, 0.3),
+                inset 0 1px 2px rgba(255, 255, 255, 0.2);
+            padding: 8px 5px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .wish-plate::before {
+            content: '';
+            position: absolute;
+            top: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 20px;
+            height: 10px;
+            background: linear-gradient(180deg, #8b4513 0%, #654321 100%);
+            border-radius: 5px 5px 0 0;
+        }
+        
+        .wish-plate::after {
+            content: '';
+            position: absolute;
+            top: -3px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px;
+            height: 4px;
+            background: #ffd700;
+            border-radius: 50%;
+        }
+        
+        .wish-text {
+            font-family: 'Ma Shan Zheng', 'ZCOOL KuaiLe', cursive;
+            font-size: 14px;
+            color: #2c1810;
+            writing-mode: vertical-rl;
+            text-orientation: upright;
+            letter-spacing: 4px;
+            line-height: 1.8;
+            text-shadow: 1px 1px 1px rgba(255, 255, 255, 0.3);
+            max-height: 120px;
+            overflow: hidden;
+        }
+        
+        #inputContainer {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        #wishInput {
+            width: 300px;
+            height: 45px;
+            padding: 0 20px;
+            font-family: 'Ma Shan Zheng', 'ZCOOL KuaiLe', cursive;
+            font-size: 18px;
+            color: #ffd4a3;
+            background: rgba(20, 25, 40, 0.8);
+            border: 1px solid rgba(255, 180, 100, 0.3);
+            border-radius: 25px;
+            outline: none;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+        
+        #wishInput::placeholder {
+            color: rgba(255, 180, 100, 0.5);
+        }
+        
+        #wishInput:focus {
+            border-color: rgba(255, 180, 100, 0.6);
+            box-shadow: 0 0 20px rgba(255, 150, 80, 0.2);
+        }
+        
+        #sendBtn {
+            width: 50px;
+            height: 45px;
+            font-family: 'Ma Shan Zheng', 'ZCOOL KuaiLe', cursive;
+            font-size: 16px;
+            color: #2c1810;
+            background: linear-gradient(180deg, #ffd4a3 0%, #ffb87a 100%);
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 10px rgba(255, 150, 80, 0.3);
+        }
+        
+        #sendBtn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 20px rgba(255, 150, 80, 0.5);
+        }
+        
+        #sendBtn:active {
+            transform: scale(0.98);
+        }
+        
+        #musicPlayer {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 10px 25px;
+            background: rgba(20, 25, 40, 0.8);
+            border: 1px solid rgba(255, 180, 100, 0.2);
+            border-radius: 30px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .music-btn {
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 50%;
+            background: linear-gradient(180deg, #ffd4a3 0%, #ffb87a 100%);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 10px rgba(255, 150, 80, 0.3);
+        }
+        
+        .music-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 20px rgba(255, 150, 80, 0.5);
+        }
+        
+        .music-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: #2c1810;
+        }
+        
+        .volume-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .volume-icon {
+            width: 20px;
+            height: 20px;
+            fill: #ffd4a3;
+        }
+        
+        #volumeSlider {
+            width: 100px;
+            height: 4px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: rgba(255, 180, 100, 0.3);
+            border-radius: 2px;
+            outline: none;
+            cursor: pointer;
+        }
+        
+        #volumeSlider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            background: linear-gradient(180deg, #ffd4a3 0%, #ffb87a 100%);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(255, 150, 80, 0.5);
+        }
+        
+        #volumeSlider::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            background: linear-gradient(180deg, #ffd4a3 0%, #ffb87a 100%);
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 8px rgba(255, 150, 80, 0.5);
+        }
+        
+        .title {
+            position: fixed;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 5;
+            font-family: 'Ma Shan Zheng', 'ZCOOL KuaiLe', cursive;
+            font-size: 36px;
+            color: #ffd4a3;
+            text-shadow: 
+                0 0 20px rgba(255, 180, 100, 0.5),
+                0 0 40px rgba(255, 150, 80, 0.3);
+            letter-spacing: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="title">许愿墙</div>
+    <canvas id="starCanvas"></canvas>
+    <div id="lanternsContainer"></div>
+    
+    <div id="inputContainer">
+        <input type="text" id="wishInput" placeholder="许下你的心愿..." maxlength="20">
+        <button id="sendBtn">放飞</button>
+    </div>
+    
+    <div id="musicPlayer">
+        <button class="music-btn" id="playBtn">
+            <svg viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z"/>
+            </svg>
+        </button>
+        <button class="music-btn" id="pauseBtn" style="display: none;">
+            <svg viewBox="0 0 24 24">
+                <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+            </svg>
+        </button>
+        <div class="volume-container">
+            <svg class="volume-icon" viewBox="0 0 24 24">
+                <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+            </svg>
+            <input type="range" id="volumeSlider" min="0" max="100" value="50">
+        </div>
+    </div>
+    
+    <audio id="bgMusic" loop crossorigin="anonymous">
+        <source src="https://www.soundjay.com/nature/sounds/rain-01.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        const canvas = document.getElementById('starCanvas');
+        const ctx = canvas.getContext('2d');
+        const lanternsContainer = document.getElementById('lanternsContainer');
+        const wishInput = document.getElementById('wishInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const playBtn = document.getElementById('playBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const volumeSlider = document.getElementById('volumeSlider');
+        const bgMusic = document.getElementById('bgMusic');
+        
+        let particles = [];
+        let lanterns = [];
+        let animationId;
+        
+        const mockWishes = [
+            "愿家人平安健康",
+            "愿事业蒸蒸日上",
+            "愿爱情甜蜜美满",
+            "愿学业有成",
+            "愿财源广进",
+            "愿心想事成",
+            "愿万事如意",
+            "愿身体健康",
+            "愿天天开心",
+            "愿梦想成真",
+            "愿幸福美满",
+            "愿平安喜乐",
+            "愿前程似锦",
+            "愿步步高升",
+            "愿笑口常开",
+            "愿好运连连",
+            "愿福气满满",
+            "愿诸事顺遂",
+            "愿平安顺遂",
+            "愿喜乐安康",
+            "愿岁月静好",
+            "愿现世安稳",
+            "愿温暖如初",
+            "愿美好常在",
+            "愿未来可期"
+        ];
+        
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        
+        function createParticles() {
+            particles = [];
+            const particleCount = Math.floor(Math.random() * 50) + 150;
+            
+            for (let i = 0; i < particleCount; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    size: Math.random() * 2 + 0.5,
+                    baseOpacity: Math.random() * 0.6 + 0.2,
+                    opacityPhase: Math.random() * Math.PI * 2,
+                    opacitySpeed: Math.random() * 0.005 + 0.002,
+                    vx: (Math.random() - 0.5) * 0.02,
+                    vy: (Math.random() - 0.5) * 0.02
+                });
+            }
+        }
+        
+        function drawMoon() {
+            const moonX = canvas.width * 0.82;
+            const moonY = canvas.height * 0.18;
+            const moonRadius = Math.min(canvas.width, canvas.height) * 0.06;
+            
+            const glowGradient = ctx.createRadialGradient(moonX, moonY, 0, moonX, moonY, moonRadius * 3);
+            glowGradient.addColorStop(0, 'rgba(255, 250, 230, 0.3)');
+            glowGradient.addColorStop(0.3, 'rgba(255, 245, 220, 0.15)');
+            glowGradient.addColorStop(0.6, 'rgba(255, 240, 210, 0.05)');
+            glowGradient.addColorStop(1, 'transparent');
+            
+            ctx.beginPath();
+            ctx.arc(moonX, moonY, moonRadius * 3, 0, Math.PI * 2);
+            ctx.fillStyle = glowGradient;
+            ctx.fill();
+            
+            const moonGradient = ctx.createRadialGradient(
+                moonX - moonRadius * 0.3, 
+                moonY - moonRadius * 0.3, 
+                0, 
+                moonX, 
+                moonY, 
+                moonRadius
+            );
+            moonGradient.addColorStop(0, '#fffef5');
+            moonGradient.addColorStop(0.5, '#fff8e7');
+            moonGradient.addColorStop(1, '#f5e6c8');
+            
+            ctx.beginPath();
+            ctx.arc(moonX, moonY, moonRadius, 0, Math.PI * 2);
+            ctx.fillStyle = moonGradient;
+            ctx.fill();
+            
+            ctx.save();
+            ctx.globalAlpha = 0.08;
+            ctx.fillStyle = '#d4c4a8';
+            
+            ctx.beginPath();
+            ctx.arc(moonX - moonRadius * 0.25, moonY - moonRadius * 0.1, moonRadius * 0.15, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.arc(moonX + moonRadius * 0.2, moonY + moonRadius * 0.25, moonRadius * 0.12, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.arc(moonX - moonRadius * 0.1, moonY + moonRadius * 0.35, moonRadius * 0.08, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.restore();
+        }
+        
+        function drawParticles(time) {
+            particles.forEach(particle => {
+                particle.x += particle.vx;
+                particle.y += particle.vy;
+                
+                if (particle.x < 0) particle.x = canvas.width;
+                if (particle.x > canvas.width) particle.x = 0;
+                if (particle.y < 0) particle.y = canvas.height;
+                if (particle.y > canvas.height) particle.y = 0;
+                
+                const opacity = particle.baseOpacity + Math.sin(time * particle.opacitySpeed + particle.opacityPhase) * 0.3;
+                
+                ctx.beginPath();
+                ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 255, 255, ${Math.max(0.1, Math.min(0.9, opacity))})`;
+                ctx.fill();
+            });
+        }
+        
+        function drawBackground(time) {
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#0a0e1a');
+            gradient.addColorStop(0.5, '#1a1f35');
+            gradient.addColorStop(1, '#252a42');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            drawParticles(time);
+            drawMoon();
+        }
+        
+        function createLantern(wishText, isUserWish = false) {
+            const lantern = document.createElement('div');
+            lantern.className = 'lantern';
+            
+            const startX = Math.random() * (window.innerWidth - 100) + 50;
+            const startY = window.innerHeight + 100;
+            
+            lantern.style.left = startX + 'px';
+            lantern.style.top = startY + 'px';
+            
+            lantern.innerHTML = `
+                <div class="lantern-body">
+                    <div class="lantern-glow"></div>
+                    <div class="lantern-rim top"></div>
+                    <div class="lantern-paper"></div>
+                    <div class="lantern-rim bottom"></div>
+                    <div class="lantern-tassel"></div>
+                </div>
+                <div class="wish-plate">
+                    <span class="wish-text">${wishText}</span>
+                </div>
+            `;
+            
+            lanternsContainer.appendChild(lantern);
+            
+            const lanternData = {
+                element: lantern,
+                x: startX,
+                y: startY,
+                vx: (Math.random() - 0.5) * 0.3,
+                vy: -0.8 - Math.random() * 0.4,
+                scale: 1,
+                opacity: 1,
+                wobblePhase: Math.random() * Math.PI * 2,
+                wobbleSpeed: 0.02 + Math.random() * 0.02,
+                wobbleAmount: 0.5 + Math.random() * 0.5,
+                isUserWish: isUserWish,
+                createdAt: Date.now()
+            };
+            
+            lanterns.push(lanternData);
+            return lanternData;
+        }
+        
+        function updateLanterns() {
+            for (let i = lanterns.length - 1; i >= 0; i--) {
+                const lantern = lanterns[i];
+                
+                lantern.wobblePhase += lantern.wobbleSpeed;
+                const wobbleOffset = Math.sin(lantern.wobblePhase) * lantern.wobbleAmount;
+                
+                lantern.x += lantern.vx + wobbleOffset * 0.1;
+                lantern.y += lantern.vy;
+                
+                const progress = 1 - (lantern.y / (window.innerHeight + 200));
+                lantern.scale = Math.max(0.3, 1 - progress * 0.7);
+                lantern.opacity = Math.max(0, 1 - progress * 0.8);
+                
+                if (lantern.x < 50) {
+                    lantern.x = 50;
+                    lantern.vx = Math.abs(lantern.vx);
+                }
+                if (lantern.x > window.innerWidth - 100) {
+                    lantern.x = window.innerWidth - 100;
+                    lantern.vx = -Math.abs(lantern.vx);
+                }
+                
+                lantern.element.style.transform = `translate(${lantern.x - parseFloat(lantern.element.style.left)}px, 0) scale(${lantern.scale})`;
+                lantern.element.style.opacity = lantern.opacity;
+                lantern.element.style.left = lantern.x + 'px';
+                lantern.element.style.top = lantern.y + 'px';
+                
+                if (lantern.y < -200 || lantern.opacity <= 0) {
+                    lantern.element.remove();
+                    lanterns.splice(i, 1);
+                }
+            }
+        }
+        
+        function maintainLanternCount() {
+            const targetCount = 18;
+            const currentCount = lanterns.length;
+            
+            if (currentCount < targetCount) {
+                const needToCreate = targetCount - currentCount;
+                for (let i = 0; i < needToCreate; i++) {
+                    setTimeout(() => {
+                        const randomWish = mockWishes[Math.floor(Math.random() * mockWishes.length)];
+                        createLantern(randomWish, false);
+                    }, i * 500);
+                }
+            }
+        }
+        
+        function animate(time) {
+            drawBackground(time);
+            updateLanterns();
+            animationId = requestAnimationFrame(animate);
+        }
+        
+        function init() {
+            resizeCanvas();
+            createParticles();
+            animate(0);
+            
+            maintainLanternCount();
+            setInterval(maintainLanternCount, 3000);
+            
+            setInterval(() => {
+                if (lanterns.length < 25) {
+                    const randomWish = mockWishes[Math.floor(Math.random() * mockWishes.length)];
+                    createLantern(randomWish, false);
+                }
+            }, 5000);
+        }
+        
+        sendBtn.addEventListener('click', () => {
+            const wish = wishInput.value.trim();
+            if (wish) {
+                createLantern(wish, true);
+                wishInput.value = '';
+            }
+        });
+        
+        wishInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const wish = wishInput.value.trim();
+                if (wish) {
+                    createLantern(wish, true);
+                    wishInput.value = '';
+                }
+            }
+        });
+        
+        playBtn.addEventListener('click', () => {
+            bgMusic.play().then(() => {
+                playBtn.style.display = 'none';
+                pauseBtn.style.display = 'flex';
+            }).catch(err => {
+                console.log('音频播放需要用户交互:', err);
+            });
+        });
+        
+        pauseBtn.addEventListener('click', () => {
+            bgMusic.pause();
+            pauseBtn.style.display = 'none';
+            playBtn.style.display = 'flex';
+        });
+        
+        volumeSlider.addEventListener('input', (e) => {
+            bgMusic.volume = e.target.value / 100;
+        });
+        
+        bgMusic.volume = 0.5;
+        
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            createParticles();
+        });
+        
+        init();
+    </script>
+</body>
+</html>

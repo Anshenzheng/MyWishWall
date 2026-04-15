@@ -1,0 +1,23 @@
+<app-starry-background></app-starry-background>
+
+<ng-container #lanternContainer></ng-container>
+
+<div class="bottom-bar">
+  <div class="input-container">
+    <input 
+      type="text" 
+      class="wish-input" 
+      placeholder="许下你的心愿..."
+      [(ngModel)]="wishText"
+      (keyup.enter)="sendWish()"
+      maxlength="20"
+    />
+    <button class="send-btn" (click)="sendWish()">
+      <svg viewBox="0 0 24 24" width="20" height="20">
+        <path fill="currentColor" d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+      </svg>
+    </button>
+  </div>
+  
+  <app-music-player></app-music-player>
+</div>

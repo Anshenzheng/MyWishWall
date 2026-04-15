@@ -417,9 +417,7 @@
         let startTime = 0;
         
         const audioUrls = [
-            'https://www.soundjay.com/nature/sounds/rain-01.mp3',
-            'https://www.soundjay.com/nature/sounds/wind-chime-01.mp3',
-            'https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3'
+            'https://downsc.chinaz.net/Files/DownLoad/sound1/201801/9620.wav'
         ];
         
         const mockWishes = [
@@ -638,9 +636,7 @@
                 
                 lantern.x = Math.max(minX, Math.min(maxX, lantern.x));
                 
-                const rotation = totalWobble * 0.15;
-                
-                lantern.element.style.transform = `translate(${lantern.x - parseFloat(lantern.element.style.left)}px, 0) scale(${lantern.scale}) rotate(${rotation}deg)`;
+                lantern.element.style.transform = `translate(${lantern.x - parseFloat(lantern.element.style.left)}px, 0) scale(${lantern.scale})`;
                 lantern.element.style.opacity = lantern.opacity;
                 lantern.element.style.left = lantern.x + 'px';
                 lantern.element.style.top = lantern.y + 'px';
